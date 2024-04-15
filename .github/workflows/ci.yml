@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.x
+
+    - name: Install tools
+      run: dotnet tool install dotnet-reportgenerator-globaltool -g
+
+    - name: Build and run tests
+      run: ./scripts/Test.ps1
+      shell: pwsh
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts
+        path: artifacts/**/*

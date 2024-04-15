@@ -1,3 +1,5 @@
+artifacts/
+
 # Local development files
 *.swp
 *.*~

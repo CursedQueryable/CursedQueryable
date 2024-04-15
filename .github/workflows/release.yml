@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+    - '*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup dotnet
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.x
+
+    - name: Install tools
+      run: dotnet tool install dotnet-reportgenerator-globaltool -g
+
+    - name: Build and run tests
+      run: ./scripts/Test.ps1
+      shell: pwsh
+    
+    - name: Build and pack
+      run: ./scripts/Pack.ps1
+      shell: pwsh
+
+    - name: Push to NuGet
+      env:
+        NUGET_URL: https://api.nuget.org/v3/index.json
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      run: ./scripts/Push.ps1
+      shell: pwsh
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts
+        path: artifacts/**/*
+
+    - name: Create test coverage badge
+      uses: simon-k/dotnet-code-coverage-badge@v1.0.0
+      id: create_coverage_badge
+      with:
+        label: Test Coverage
+        color: brightgreen
+        path: artifacts/coverage/coverage.opencover.xml
+        gist-filename: cq-coverage.json
+        gist-id: a66a7792632db41df60777de803b8548
+        gist-auth-token: ${{ secrets.GIST_AUTH_TOKEN }}
+
+    - name: Print code coverage
+      run: echo "Code coverage percentage ${{steps.create_coverage_badge.outputs.percentage}}%"
